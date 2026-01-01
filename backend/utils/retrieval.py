@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
 
-DATA_DIR = Path("data")
+# Get the absolute path to the backend/data directory
+DATA_DIR = Path(__file__).parent.parent / "data"
 
 def load_json(filename):
     with open(DATA_DIR / filename) as f:

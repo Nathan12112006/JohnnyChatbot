@@ -6,9 +6,13 @@ import os
 import sys
 from pathlib import Path
 
-# Add backend directory to Python path for imports
-backend_dir = Path(__file__).parent.parent / "backend"
+# Get the root directory and add backend to Python path
+root_dir = Path(__file__).parent.parent
+backend_dir = root_dir / "backend"
 sys.path.insert(0, str(backend_dir))
+
+# Change working directory to root for relative paths to work
+os.chdir(root_dir)
 
 # Load environment variables
 load_dotenv()
