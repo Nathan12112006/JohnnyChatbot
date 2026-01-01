@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Johnny - Why should you hire me?</title>
+  <link rel="stylesheet" href="frontend/style.css" />
+</head>
+<body>
+  <div class="main-container">
+    <div class="chat-container">
+      <div class="header">
+        <h2>Why should you hire me?</h2>
+        <p>I don't know, ask Johnny</p>
+      </div>
+
+      <div id="chat-box">
+        <div class="message bot">
+          Hi! I'm Johnny, and I know Nathan really well. I can help you learn about his background, projects, and experience. I hope to convince you to hire him.
+        </div>
+      </div>
+
+      <div class="typing-indicator" id="typing-indicator">
+        <div class="typing-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </div>
+
+      <div class="input-container">
+        <div class="input-row">
+          <input
+            type="text"
+            id="user-input"
+            placeholder="Type your question here..."
+            maxlength="500"
+          />
+          <button id="send-btn" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="suggestions-panel" id="suggestions-panel">
+      <h3>💡 Quick Questions</h3>
+      <div id="suggestions-container">
+        <!-- Suggestions will be populated here -->
+      </div>
+    </div>
+  </div>
+
+  <script src="frontend/script.js"></script>
+</body>
+</html>

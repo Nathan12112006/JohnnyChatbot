@@ -1,25 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 import os
 import sys
+import json
 from pathlib import Path
-
-# Get the root directory and add backend to Python path
-root_dir = Path(__file__).parent.parent
-backend_dir = root_dir / "backend"
-sys.path.insert(0, str(backend_dir))
-
-# Change working directory to root for relative paths to work
-os.chdir(root_dir)
+from pydantic import BaseModel
 
 # Load environment variables
 load_dotenv()
 
-from chat.router import router as chat_router
+# Add backend directory to Python path
+backend_dir = Path(__file__).parent.parent / "backend"
+sys.path.insert(0, str(backend_dir))
 
-app = FastAPI(title="Internship Chatbot Backend")
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,15 +23,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files
-app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
+# Import after setting up paths
+try:
+    from chat.service import generate_response
+except ImportError:
+    # Fallback if imports fail
+    async def generate_response(message: str):
+        return "Sorry, I'm having trouble loading my data right now.", []
 
-# Include API routes
-app.include_router(chat_router)
+class ChatMessage(BaseModel):
+    message: str
+
+@app.post("/chat")
+async def chat_endpoint(chat_message: ChatMessage):
+    try:
+        reply, suggestions = await generate_response(chat_message.message)
+        return {"reply": reply, "suggestions": suggestions}
+    except Exception as e:
+        return {"reply": f"Sorry, I encountered an error: {str(e)}", "suggestions": []}
 
 @app.get("/")
 def health_check():
-    return {"status": "ok"}
-
-# Vercel serverless function handler
-handler = app
+    return {"status": "ok", "message": "Johnny's API is running!"}
