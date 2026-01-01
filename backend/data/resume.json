@@ -1,0 +1,46 @@
+{
+  "name": "Nathan Gu",
+  "role": "Computer Science Student",
+  "education": {
+    "school": "Santa Clara University",
+    "degree": "B.S. in Computer Science",
+    "status": "Undergraduate Student"
+  },
+  "summary": "Computer Science student with experience building software projects in Python, C++, Java, and Qt. Strong interest in backend development, problem-solving, and learning new technologies through hands-on projects.",
+  "skills": {
+    "languages": ["Python", "C++", "Java", "JavaScript"],
+    "frameworks": ["Qt", "FastAPI"],
+    "tools": ["Git", "GitHub"],
+    "concepts": [
+      "Data Structures",
+      "Object-Oriented Programming",
+      "APIs",
+      "Debugging",
+      "Algorithmic Thinking"
+    ]
+  },
+  "courses": [
+    "Data Structures and Algorithms",
+    "Object-Oriented Programming",
+    "Discrete Mathematics",
+    "Computer Systems",
+    "Software Engineering"
+  ],
+  "strengths": [
+    "Learns new technologies quickly",
+    "Strong problem-solving skills",
+    "Clear communicator",
+    "Comfortable debugging unfamiliar code"
+  ],
+  "values": [
+    "Writing understandable code",
+    "Continuous learning",
+    "Honest communication",
+    "Collaboration"
+  ],
+  "contact": {
+    "email": "your_email_here",
+    "github": "https://github.com/yourusername",
+    "linkedin": "https://linkedin.com/in/yourusername"
+  }
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "AI Resume & Portfolio Chatbot",
+    "description": "An AI-powered chatbot that answers recruiter questions about my resume, projects, and skills.",
+    "problem": "Recruiters often spend very little time reviewing resumes and portfolios.",
+    "solution": "Built an interactive chatbot that provides concise, tailored answers using an LLM and structured resume data.",
+    "technologies": ["Python", "FastAPI", "OpenAI API"],
+    "challenges": [
+      "Designing prompts that sound professional but not exaggerated",
+      "Structuring resume data for retrieval"
+    ],
+    "lessons": [
+      "Importance of clean data organization",
+      "Prompt engineering affects output quality significantly"
+    ]
+  },
+  {
+    "name": "Qt Desktop Application",
+    "description": "A desktop application built with Qt and C++ featuring multiple interactive UI components.",
+    "problem": "Learning how to manage UI logic and application state in a large C++ project.",
+    "solution": "Designed modular UI components and debugged event-handling issues.",
+    "technologies": ["C++", "Qt"],
+    "challenges": [
+      "Debugging crashes caused by signal-slot misuse",
+      "Managing UI state across screens"
+    ],
+    "lessons": [
+      "Importance of understanding framework lifecycles",
+      "Systematic debugging techniques"
+    ]
+  }
+]
