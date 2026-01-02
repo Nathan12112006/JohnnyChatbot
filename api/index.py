@@ -47,6 +47,10 @@ async def chat_endpoint(chat_message: ChatMessage):
 def health_check():
     return {"status": "ok", "message": "Johnny's API is running!"}
 
-# For Vercel
+@app.get("/test")
+def test_endpoint():
+    return {"message": "Test endpoint working!"}
+
+# For Vercel - this is the key part
 from mangum import Mangum
-handler = Mangum(app)
+handler = Mangum(app, lifespan="off")
