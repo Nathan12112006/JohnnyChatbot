@@ -16,7 +16,7 @@ app.add_middleware(
 class ChatMessage(BaseModel):
     message: str
 
-@app.post("/api/chat")
+@app.post("/chat")
 async def chat_endpoint(chat_message: ChatMessage):
     # Simple Johnny responses for now
     message = chat_message.message.lower()
@@ -43,7 +43,7 @@ async def chat_endpoint(chat_message: ChatMessage):
     
     return {"reply": reply, "suggestions": suggestions}
 
-@app.get("/api/")
+@app.get("/")
 def health_check():
     return {"status": "ok", "message": "Johnny's API is running!"}
 
