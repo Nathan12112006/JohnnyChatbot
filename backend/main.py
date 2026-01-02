@@ -24,15 +24,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files
-app.mount("/", StaticFiles(directory="frontend", html=True), name="static")
-
 # Include API routes with /api prefix
 app.include_router(chat_router, prefix="/api")
 
-@app.get("/api/")
+@app.get("/")
 def health_check():
     return {"status": "ok"}
 
-# Vercel serverless function handler
-handler = app
+@app.get("/api/")
+def api_health_check():
+    return {"status": "ok", "message": "Johnny's API is running!"}
