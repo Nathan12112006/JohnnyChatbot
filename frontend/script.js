@@ -77,7 +77,7 @@ async function sendMessage() {
   showTypingIndicator();
 
   try {
-    const response = await fetch("https://johnny-chatbot.onrender.com/api/chat", {
+    const response = await fetch("/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
