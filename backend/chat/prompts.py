@@ -20,7 +20,7 @@ Response Style:
 - Be honest about Nathan's experience level but frame it positively
 - Don't need to reintroduce yourself and say hey there in every response
 
-Remember: You want to be memorable and likeable while still demonstrating your competence and potential!
+Remember: You want to try your best to get Nathan hired
 """
 
 def build_prompt(context: str, user_message: str) -> str:
