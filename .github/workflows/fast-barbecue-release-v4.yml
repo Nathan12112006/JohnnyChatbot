@@ -1,0 +1,85 @@
+name: Bitmap-only active-barbecuing release
+
+on:
+  push:
+    branches:
+      - barbecue-dataset-build-20260902
+    paths:
+      - "fast_barbecue_release_v4.py"
+      - ".github/workflows/fast-barbecue-release-v4.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bitmap-active-barbecuing-release-v4
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHONUNBUFFERED: "1"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out build branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            Pillow==11.1.0 \
+            ImageHash==4.3.1 \
+            requests==2.32.3 \
+            tqdm==4.67.1
+
+      - name: Build and validate exactly 1,000 bitmap images
+        run: |
+          python fast_barbecue_release_v4.py \
+            --target 1000 \
+            --output fast_barbecue_output_v4 \
+            --per-query 500 \
+            --search-limit 3500 \
+            --metadata-limit 3300 \
+            --download-limit 2300 \
+            --workers 20 \
+            --pause 0.8 \
+            --max-side 640 \
+            --min-side 256 \
+            --phash-limit 5 \
+            --dhash-limit 4 \
+            --creator-cap 40 \
+            --query-cap 220
+
+      - name: Publish stable public files
+        run: |
+          TAG="active-barbecuing-dataset-1000-v4"
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" \
+            fast_barbecue_output_v4/active_barbecuing_dataset_1000.zip \
+            fast_barbecue_output_v4/active_barbecuing_preview_100.jpg \
+            fast_barbecue_output_v4/build_summary.json \
+            --target "$GITHUB_SHA" \
+            --title "Active Barbecuing Image Dataset — 1,000 images" \
+            --notes "Bitmap-only Wikimedia Commons collection. The ZIP passed archive integrity, exact image count, image decoding, and SHA-256 duplicate checks. Relevance selection is automated and should be manually reviewed before training."
+
+      - name: Upload Actions artifact fallback
+        uses: actions/upload-artifact@v4
+        with:
+          name: active-barbecuing-dataset-1000-v4
+          path: |
+            fast_barbecue_output_v4/active_barbecuing_dataset_1000.zip
+            fast_barbecue_output_v4/active_barbecuing_preview_100.jpg
+            fast_barbecue_output_v4/build_summary.json
+            fast_barbecue_output_v4/selected_metadata.jsonl
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
