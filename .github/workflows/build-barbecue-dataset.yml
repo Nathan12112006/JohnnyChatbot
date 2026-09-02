@@ -1,4 +1,4 @@
-name: Measure Wikimedia barbecue image coverage
+name: Build active-barbecuing dataset from Wikimedia Commons
 
 on:
   push:
@@ -13,87 +13,65 @@ permissions:
   contents: read
 
 jobs:
-  probe:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 330
+    env:
+      HF_HOME: /tmp/huggingface
+      TOKENIZERS_PARALLELISM: "false"
+      PYTHONUNBUFFERED: "1"
     steps:
-      - name: Count distinct Commons candidates
-        shell: bash
+      - name: Check out build branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: barbecue_dataset_builder/requirements.txt
+
+      - name: Install CPU PyTorch
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          import collections
-          import json
-          import time
-          import urllib.parse
-          import urllib.request
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0 torchvision==0.21.0
 
-          API = "https://commons.wikimedia.org/w/api.php"
-          HEADERS = {"User-Agent": "ActiveBarbecuingDatasetBuilder/1.0 (research; contact via GitHub Nathan12112006)"}
-          QUERIES = [
-              "barbecue", "barbeque", "barbecuing", "barbequing", "BBQ grilling",
-              "barbecue cooking people", "person grilling", "people grilling", "grill cook",
-              "barbecue cook", "barbecue festival", "barbecue competition", "pitmaster",
-              "outdoor grill cooking", "backyard barbecue", "park barbecue", "beach barbecue",
-              "riverside barbecue", "lakeside barbecue", "tailgate grilling", "cookout grill",
-              "braai", "churrasco", "churrasqueira cooking", "asado parrilla", "parrillero",
-              "mangal barbecue", "shashlik grill", "kebab grilling", "satay grilling",
-              "yakitori grilling", "Grillmeister", "grillen personen", "barbecue personne",
-              "churrasqueiro", "parrillada personas", "焼肉 バーベキュー", "烧烤 人",
-          ]
+      - name: Install dataset-builder dependencies
+        run: python -m pip install -r barbecue_dataset_builder/requirements.txt
 
-          def get(params):
-              url = API + "?" + urllib.parse.urlencode(params)
-              request = urllib.request.Request(url, headers=HEADERS)
-              with urllib.request.urlopen(request, timeout=90) as response:
-                  return json.load(response)
+      - name: Build, filter, deduplicate, and validate 1,000 images
+        run: |
+          python barbecue_dataset_builder/commons_runner.py \
+            --target 1000 \
+            --output barbecue_dataset_output \
+            --per-query 500 \
+            --request-pause 2.0 \
+            --desired-valid-candidates 3800 \
+            --max-download-attempts 6000 \
+            --person-pool 2600 \
+            --download-workers 10 \
+            --max-side 1600 \
+            --min-side 384 \
+            --phash-threshold 7 \
+            --dhash-threshold 6 \
+            --clip-batch-size 32 \
+            --person-batch-size 8 \
+            --min-person-confidence 0.24 \
+            --embedding-similarity-threshold 0.987 \
+            --max-per-creator 28 \
+            --max-per-query 120
 
-          all_titles = set()
-          suffix_counts = collections.Counter()
-          for idx, query in enumerate(QUERIES, 1):
-              fetched = []
-              cont = {}
-              total_hits = None
-              for _ in range(2):
-                  params = {
-                      "action": "query", "list": "search", "srsearch": query,
-                      "srnamespace": 6, "srlimit": 500, "srprop": "",
-                      "format": "json", "formatversion": 2,
-                  }
-                  params.update(cont)
-                  data = get(params)
-                  total_hits = data.get("query", {}).get("searchinfo", {}).get("totalhits", total_hits)
-                  rows = data.get("query", {}).get("search", [])
-                  fetched.extend(row["title"] for row in rows)
-                  if "continue" not in data:
-                      break
-                  cont = data["continue"]
-                  time.sleep(0.12)
-              before = len(all_titles)
-              all_titles.update(fetched)
-              print(f"{idx:02d} {query!r}: fetched={len(fetched)} totalhits={total_hits} newly_unique={len(all_titles)-before} cumulative={len(all_titles)}")
-              time.sleep(0.12)
-
-          for title in all_titles:
-              suffix = title.rsplit(".", 1)[-1].lower() if "." in title else "none"
-              suffix_counts[suffix] += 1
-          print("UNIQUE_TOTAL", len(all_titles))
-          print("TOP_SUFFIXES", suffix_counts.most_common(20))
-
-          sample_titles = sorted(all_titles)[:50]
-          info = get({
-              "action": "query", "titles": "|".join(sample_titles),
-              "prop": "imageinfo", "iiprop": "url|size|mime|extmetadata",
-              "iiurlwidth": 1200, "format": "json", "formatversion": 2,
-          })
-          license_counts = collections.Counter()
-          image_rows = 0
-          for page in info.get("query", {}).get("pages", []):
-              if not page.get("imageinfo"):
-                  continue
-              image_rows += 1
-              metadata = page["imageinfo"][0].get("extmetadata", {})
-              license_counts[metadata.get("LicenseShortName", {}).get("value", "unknown")] += 1
-          print("SAMPLE_IMAGEINFO_ROWS", image_rows)
-          print("SAMPLE_LICENSES", dict(license_counts))
-          PY
+      - name: Upload completed dataset, review sheets, and audit files
+        uses: actions/upload-artifact@v4
+        with:
+          name: active-barbecuing-open-license-1000
+          path: |
+            barbecue_dataset_output/active_barbecuing_open_license_1000.zip
+            barbecue_dataset_output/active_barbecuing_review_1000.zip
+            barbecue_dataset_output/build_summary.json
+            barbecue_dataset_output/ranked_review_candidates.csv
+            barbecue_dataset_output/commons_candidates.jsonl
+            barbecue_dataset_output/download_errors.jsonl
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
