@@ -1,0 +1,85 @@
+name: Fast active-barbecuing dataset release
+
+on:
+  push:
+    branches:
+      - barbecue-dataset-build-20260902
+    paths:
+      - "fast_barbecue_release.py"
+      - ".github/workflows/fast-barbecue-release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fast-active-barbecuing-release
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      PYTHONUNBUFFERED: "1"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out build branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lightweight dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            Pillow==11.1.0 \
+            ImageHash==4.3.1 \
+            requests==2.32.3 \
+            tqdm==4.67.1
+
+      - name: Build and independently validate the ZIP
+        run: |
+          python fast_barbecue_release.py \
+            --target 1000 \
+            --output fast_barbecue_output \
+            --per-query 400 \
+            --search-limit 2400 \
+            --metadata-limit 2100 \
+            --download-limit 1900 \
+            --workers 24 \
+            --pause 0.55 \
+            --max-side 768 \
+            --min-side 320 \
+            --phash-limit 5 \
+            --dhash-limit 4 \
+            --creator-cap 35 \
+            --query-cap 160
+
+      - name: Publish stable public download links
+        run: |
+          TAG="active-barbecuing-dataset-1000-v1"
+          gh release delete "$TAG" --yes --cleanup-tag || true
+          gh release create "$TAG" \
+            fast_barbecue_output/active_barbecuing_dataset_1000.zip \
+            fast_barbecue_output/active_barbecuing_preview_100.jpg \
+            fast_barbecue_output/build_summary.json \
+            --target "$GITHUB_SHA" \
+            --title "Active Barbecuing Image Dataset — 1,000 images" \
+            --notes "Machine-filtered Wikimedia Commons image dataset. The ZIP was checked for archive integrity, image decodability, exactly 1,000 image entries, and exact duplicate hashes. Review the preview and included metadata before model training."
+
+      - name: Upload Actions artifact as a fallback
+        uses: actions/upload-artifact@v4
+        with:
+          name: active-barbecuing-dataset-1000-release-files
+          path: |
+            fast_barbecue_output/active_barbecuing_dataset_1000.zip
+            fast_barbecue_output/active_barbecuing_preview_100.jpg
+            fast_barbecue_output/build_summary.json
+            fast_barbecue_output/selected_metadata.jsonl
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
