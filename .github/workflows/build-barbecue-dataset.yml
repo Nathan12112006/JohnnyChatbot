@@ -1,0 +1,67 @@
+name: Build active-barbecuing dataset
+
+on:
+  push:
+    branches:
+      - barbecue-dataset-build-20260902
+    paths:
+      - "barbecue_dataset_builder/**"
+      - ".github/workflows/build-barbecue-dataset.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      HF_HOME: ${{ runner.temp }}/huggingface
+      TOKENIZERS_PARALLELISM: "false"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Check out build branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: barbecue_dataset_builder/requirements.txt
+
+      - name: Install CPU PyTorch
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch==2.6.0 torchvision==0.21.0
+
+      - name: Install dataset-builder dependencies
+        run: python -m pip install -r barbecue_dataset_builder/requirements.txt
+
+      - name: Build and validate the dataset
+        run: |
+          python barbecue_dataset_builder/build.py \
+            --target 1000 \
+            --output barbecue_dataset_output \
+            --desired-valid-candidates 5200 \
+            --max-download-attempts 9000 \
+            --person-pool 3600 \
+            --download-workers 16 \
+            --clip-batch-size 32 \
+            --person-batch-size 8
+
+      - name: Upload completed dataset and review bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: active-barbecuing-open-license-1000
+          path: |
+            barbecue_dataset_output/active_barbecuing_open_license_1000.zip
+            barbecue_dataset_output/active_barbecuing_review_1000.zip
+            barbecue_dataset_output/build_summary.json
+            barbecue_dataset_output/ranked_review_candidates.csv
+            barbecue_dataset_output/openverse_candidates.jsonl
+            barbecue_dataset_output/download_errors.jsonl
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
