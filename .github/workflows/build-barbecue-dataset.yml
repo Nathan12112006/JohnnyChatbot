@@ -1,4 +1,4 @@
-name: Probe openly licensed image sources
+name: Measure Wikimedia barbecue image coverage
 
 on:
   push:
@@ -15,50 +15,85 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
-      - name: Probe Wikimedia Commons and WordPress Photo Directory
+      - name: Count distinct Commons candidates
         shell: bash
         run: |
-          set -euxo pipefail
+          set -euo pipefail
           python - <<'PY'
+          import collections
           import json
+          import time
           import urllib.parse
           import urllib.request
 
-          headers = {"User-Agent": "ActiveBarbecuingDatasetBuilder/1.0 (research; contact via GitHub Nathan12112006)"}
-          tests = [
-              (
-                  "commons",
-                  "https://commons.wikimedia.org/w/api.php?" + urllib.parse.urlencode({
-                      "action": "query",
-                      "generator": "search",
-                      "gsrsearch": "barbecue grilling person",
-                      "gsrnamespace": 6,
-                      "gsrlimit": 5,
-                      "prop": "imageinfo",
-                      "iiprop": "url|size|mime|extmetadata",
-                      "iiurlwidth": 1200,
-                      "format": "json",
-                      "formatversion": 2,
-                  }),
-              ),
-              (
-                  "wordpress",
-                  "https://wordpress.org/photos/wp-json/wp/v2/photos?" + urllib.parse.urlencode({
-                      "search": "barbecue",
-                      "per_page": 5,
-                  }),
-              ),
+          API = "https://commons.wikimedia.org/w/api.php"
+          HEADERS = {"User-Agent": "ActiveBarbecuingDatasetBuilder/1.0 (research; contact via GitHub Nathan12112006)"}
+          QUERIES = [
+              "barbecue", "barbeque", "barbecuing", "barbequing", "BBQ grilling",
+              "barbecue cooking people", "person grilling", "people grilling", "grill cook",
+              "barbecue cook", "barbecue festival", "barbecue competition", "pitmaster",
+              "outdoor grill cooking", "backyard barbecue", "park barbecue", "beach barbecue",
+              "riverside barbecue", "lakeside barbecue", "tailgate grilling", "cookout grill",
+              "braai", "churrasco", "churrasqueira cooking", "asado parrilla", "parrillero",
+              "mangal barbecue", "shashlik grill", "kebab grilling", "satay grilling",
+              "yakitori grilling", "Grillmeister", "grillen personen", "barbecue personne",
+              "churrasqueiro", "parrillada personas", "焼肉 バーベキュー", "烧烤 人",
           ]
-          for name, url in tests:
-              request = urllib.request.Request(url, headers=headers)
-              with urllib.request.urlopen(request, timeout=60) as response:
-                  raw = response.read()
-                  print(name, response.status, response.headers.get("content-type"), len(raw))
-                  data = json.loads(raw)
-                  if name == "commons":
-                      print("commons pages", len(data.get("query", {}).get("pages", [])))
-                  else:
-                      print("wordpress rows", len(data))
+
+          def get(params):
+              url = API + "?" + urllib.parse.urlencode(params)
+              request = urllib.request.Request(url, headers=HEADERS)
+              with urllib.request.urlopen(request, timeout=90) as response:
+                  return json.load(response)
+
+          all_titles = set()
+          suffix_counts = collections.Counter()
+          for idx, query in enumerate(QUERIES, 1):
+              fetched = []
+              cont = {}
+              total_hits = None
+              for _ in range(2):
+                  params = {
+                      "action": "query", "list": "search", "srsearch": query,
+                      "srnamespace": 6, "srlimit": 500, "srprop": "",
+                      "format": "json", "formatversion": 2,
+                  }
+                  params.update(cont)
+                  data = get(params)
+                  total_hits = data.get("query", {}).get("searchinfo", {}).get("totalhits", total_hits)
+                  rows = data.get("query", {}).get("search", [])
+                  fetched.extend(row["title"] for row in rows)
+                  if "continue" not in data:
+                      break
+                  cont = data["continue"]
+                  time.sleep(0.12)
+              before = len(all_titles)
+              all_titles.update(fetched)
+              print(f"{idx:02d} {query!r}: fetched={len(fetched)} totalhits={total_hits} newly_unique={len(all_titles)-before} cumulative={len(all_titles)}")
+              time.sleep(0.12)
+
+          for title in all_titles:
+              suffix = title.rsplit(".", 1)[-1].lower() if "." in title else "none"
+              suffix_counts[suffix] += 1
+          print("UNIQUE_TOTAL", len(all_titles))
+          print("TOP_SUFFIXES", suffix_counts.most_common(20))
+
+          sample_titles = sorted(all_titles)[:50]
+          info = get({
+              "action": "query", "titles": "|".join(sample_titles),
+              "prop": "imageinfo", "iiprop": "url|size|mime|extmetadata",
+              "iiurlwidth": 1200, "format": "json", "formatversion": 2,
+          })
+          license_counts = collections.Counter()
+          image_rows = 0
+          for page in info.get("query", {}).get("pages", []):
+              if not page.get("imageinfo"):
+                  continue
+              image_rows += 1
+              metadata = page["imageinfo"][0].get("extmetadata", {})
+              license_counts[metadata.get("LicenseShortName", {}).get("value", "unknown")] += 1
+          print("SAMPLE_IMAGEINFO_ROWS", image_rows)
+          print("SAMPLE_LICENSES", dict(license_counts))
           PY
